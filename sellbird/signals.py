@@ -270,6 +270,20 @@ SIGNAL_CATALOG: list[dict] = [
         "confidence_floor": 0.0,
     },
     {
+        "code": "CONTRACT_WIN",
+        "label": "Announced a contract win",
+        "description": ("The company says on its own site that it won work: \"we have been awarded "
+                        "the contract for...\", \"appointed main contractor on...\", \"works have "
+                        "commenced on site at...\". Stored as their own sentence, with the value and "
+                        "date when stated. Wins over a year old aren't written to as news. Pairs with "
+                        "the contract-wins discovery preset."),
+        "category": "profile",
+        "value_type": "bool",
+        "collector": "profile",
+        "cost_note": "free (homepage, news, projects or press page)",
+        "confidence_floor": 0.0,
+    },
+    {
         "code": "HIRING_ROLE",
         "label": "Hiring for a relevant role",
         "description": (

@@ -4,7 +4,7 @@
 
 This is the part that makes Sellbird different from a black box, and it is deliberately not skippable.
 
-Sellbird knows how to collect **29 signals** about a business. It does not collect any of them until you say so. On first run it *proposes* the catalog; you confirm, skip, or reject each one in the dashboard or from the terminal:
+Sellbird knows how to collect **30 signals** about a business. It does not collect any of them until you say so. On first run it *proposes* the catalog; you confirm, skip, or reject each one in the dashboard or from the terminal:
 
 ```bash
 sellbird signals                       # review the catalog
@@ -28,6 +28,7 @@ Every signal shows what it is in plain language, **what it costs**, and how many
 | | `BLOG_STALE` | Content marketing started and abandoned. |
 | | `SITE_PAGE_COUNT`, `TECH_STACK`, `BLOCKS_AI_CRAWLERS` | Size, platform, AI-search visibility. |
 | | `HIRING_ROLE` / `OPEN_ROLES` | What they're hiring for, and how many roles are open. When their site links a Greenhouse, Lever, Ashby or Workable board, Sellbird reads that board's public feed (one request): roles matching `icp.hiring_signals` (else `icp.titles`), with department, location, posting date and the posting's URL; when the board lists none, it records "not hiring" so a closed role stops counting. Otherwise it reads the careers page. Set `hiring_signals` to the roles that mean they're buying: the `titles` fallback names who you email, so "CEO" only matches a CEO opening (never "Assistant to the CEO"), which is rarely the signal you want. |
+| | `CONTRACT_WIN` | Work they say they won, on their own homepage, news, projects or press page ("awarded the contract for...", "appointed main contractor on...", "works have commenced on site at..."): their own sentence, the value and the date when stated. Prizes, certificates and "we help clients win" don't count. The Writer only calls a win new when it's under a year old. |
 | | `YC_BACKED`, `ACCELERATOR`, `FUNDING_ROUND` | A startup, as its own site says: YC or another accelerator (with the batch or cohort), or a raise it announced (round, amount, date). |
 | **People** | `CONTACT_FOUND`, `DECISION_MAKER_TITLE`, `LIKELY_OWNER`, `REGISTRY_VERIFIED` | Who decides, and whether they own the place. |
 | **Contact** | `EMAIL_PATTERN`, `EMAIL_STATUS`, `CONTACT_FORM_URL` | Whether you can actually reach them. |
@@ -80,6 +81,7 @@ parts:
   | `yc` (*YC startups*) | Companies whose own site says they're backed by Y Combinator | `YC_BACKED`, with the batch (W24, S23) |
   | `accelerator` (*Accelerator startups*) | Ones backed by Techstars, 500 Global, Antler, Entrepreneur First, South Park Commons, Neo, AI Grant, a16z speedrun or Plug and Play (two searches per industry; the signal also reads Pioneer) | `ACCELERATOR`, with the program and cohort ("Techstars 2024") |
   | `funding` (*Recently funded*) | Companies announcing their own raise ("we raised", "announces $X Series A") in the last 18 months, news sites and funding databases excluded | `FUNDING_ROUND`: round, amount and date |
+  | `contracts` (*Recent contract wins*) | Firms announcing a contract they won on their own news or project pages in the last year, searched in each of your `icp.geography` places; tender portals and trade press excluded | `CONTRACT_WIN`: their sentence, value and date |
 
   `sellbird discover --preset accelerator --provider serper`, or the *Look for*
   menu on the Discover tab.

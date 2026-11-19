@@ -21,6 +21,7 @@ from urllib.parse import urljoin, urlparse
 import httpx
 
 from sellbird.public_http import public_http_client
+from sellbird.contract_wins import contract_text
 from sellbird.startups import funding_text
 
 from sellbird.collectors.ats import detect_board, matching_roles, read_board, role_keywords
@@ -341,6 +342,8 @@ _YC = r"(?:YC|Y[\s-]?Combinator)"
 _YC_LINK_RE = re.compile(r"ycombinator\.com\\?/companies\\?/([a-z0-9][\w-]*)", re.I)
 YC_ABOUT_PATHS = ("/about", "/about-us", "/company", "/our-story")
 FUNDING_PATHS = ("/press", "/news", "/newsroom", "/blog")
+# Where a contractor announces work it won: news first, then projects.
+CONTRACT_PATHS = ("/news", "/latest-news", "/news-and-media", "/media", "/press", "/projects", "/blog")
 _YC_SEASONS = {"w": "W", "winter": "W", "s": "S", "summer": "S",
                "f": "F", "fall": "F", "x": "X", "spring": "X"}
 _SEASON_WORD = r"(Winter|Summer|Fall|Spring)"
@@ -831,6 +834,84 @@ def funding_round(html: str, domain: str = "", url: str = "") -> dict | None:
     return max(claims, key=rank)
 
 
+# ── CONTRACT_WIN: work the company says it won, on its own pages ──
+# "We have been awarded the contract for...", "<name> has been appointed
+# main contractor on...", "we've secured a €4m framework...", "works have
+# commenced on site at...". Only the company's own win counts, and only a
+# contract: not "awarded Contractor of the Year", an ISO certificate, or
+# "we help clients win tenders". Stored as their own sentence, so the writer
+# quotes what they said rather than a summary of it.
+_WIN_VERB = (
+    r"(?:(?:been\s+)?awarded|won|wins|secured|secures|landed|lands|signed|signs"
+    r"|(?:been\s+)?appointed(?:\s+as)?|(?:been\s+)?selected\s+as|(?:been\s+)?chosen\s+as"
+    r"|(?:started|commenced|begun|begins|commences|starts|broken\s+ground|breaks\s+ground)\b(?=\s+(?:on\s+site|works?|construction|on|at)\b))")
+# What was won has to be a contract, a job or works, said in that clause.
+_CONTRACT_WORD = re.compile(
+    r"\b(?:contracts?|tenders?|frameworks?|projects?|schemes?|works|developments?|construction|build|"
+    r"refurbishment|fit[\s-]?out|extension|installation|upgrade|(?:main|principal|lead|preferred)\s+contractor"
+    r"|on\s+site|ground)\b", re.I)
+# Prizes, certificates and other people's wins.
+_NOT_A_CONTRACT = re.compile(
+    r"\b(?:award|awards|iso\s*\d*|certificat\w*|accredit\w*|prize|medal|winner|finalist|shortlisted|"
+    r"of\s+the\s+year|best\s+\w+|gold|silver|bronze|rating|status|grant|funding|planning\s+permission)\b"
+    r"|\b(?:help(?:s|ing|ed)?|for)\s+(?:our\s+|their\s+)?(?:clients?|customers?|members?)\b", re.I)
+# "Work has commenced on site at...", "Construction is under way on...":
+# no subject, the company's own news page says it about its own job.
+_SITE_START = re.compile(
+    r"^(?:(?:construction|work|works|site\s+works|enabling\s+works)\s+(?:has|have|is|are)\s+(?:now\s+|officially\s+)?"
+    r"(?:commenced|started|begun|under\s*way)\b)(?P<rest>[^.!?]{0,200})", re.I)
+_MAX_SUMMARY = 200
+
+
+def contract_win(html: str, domain: str = "", url: str = "") -> dict | None:
+    """{"summary", "amount", "date", "conf"} for the newest contract the
+    page says the company itself won, else None. The summary is the
+    company's own sentence; any part not stated is ""."""
+    if not html:
+        return None
+    name = _alnum(_domain_name(domain)) if domain else ""
+    spelled = r"[\s.-]?".join(re.escape(ch) for ch in name) if len(name) >= 3 else ""
+    # "Acme", "Acme Construction", "Acme Group Ltd" before the verb.
+    named = rf"{spelled}(?:\s+(?-i:[A-Z])[\w&'’-]*){{0,3}}" if spelled else ""
+    subject = r"(?:we(?:['’]ve)?|the\s+company|our\s+(?:company|team|firm)" + (rf"|{named}" if named else "") + r")"
+    won = re.compile(
+        rf"^{_LEAD_IN}{_ANNOUNCE}?{subject},?(?:\s+(?:has|have|had|just|now|recently|officially|successfully"
+        rf"|today|also|again|been|was|were|is|are))*\s+(?P<verb>{_WIN_VERB})(?P<rest>{_CLAUSE}{{0,200}})", re.I)
+    claims = []
+    for sentence in _lines(html):
+        m = won.search(sentence)
+        conf = 0.9
+        if not m:
+            m = _SITE_START.search(sentence)
+            conf = 0.75
+            if not m:
+                continue
+        rest = m.group("rest")
+        end = _CLAUSE_END_RE.search(rest)
+        clause = rest[:end.start()] if end else rest
+        verb = (m.groupdict().get("verb") or "").lower()
+        evidence = verb + " " + clause
+        if not _CONTRACT_WORD.search(evidence) or _NOT_A_CONTRACT.search(clause):
+            continue
+        # "won a contract to supply us" is fine; "won new clients" is not.
+        if verb.startswith(("won", "wins", "secured", "secures", "landed", "lands", "signed", "signs")) \
+                and not re.search(r"\b(?:contracts?|tenders?|frameworks?|projects?|schemes?|works|job)\b",
+                                  clause, re.I):
+            continue
+        summary = sentence if len(sentence) <= _MAX_SUMMARY else sentence[:_MAX_SUMMARY].rsplit(" ", 1)[0] + "…"
+        when = _not_future(_sentence_date(sentence))
+        claims.append({"summary": summary, "amount": _amount_in(clause), "date": when, "conf": conf})
+    if not claims:
+        return None
+    # The page's own date belongs to what the page announces: its only win.
+    page_date = _not_future(_page_date(html, url))
+    if page_date:
+        undated = [c for c in claims if not c["date"]]
+        if len(undated) == 1 and len(claims) == 1:
+            undated[0]["date"] = page_date
+    return max(claims, key=lambda c: (c["date"], c["conf"], bool(c["amount"])))
+
+
 def _page_title(html: str) -> str:
     """The page's <title>, og:title and first <h1>, lowercased, for telling
     which raise the page itself is about."""
@@ -1235,6 +1316,26 @@ class ProfileCollector:
                 add("FUNDING_ROUND", num=1, text=funding_text(best), conf=best["conf"], url=where)
             else:
                 add("FUNDING_ROUND", num=0, url=site)
+
+        # A contract they say they won: the homepage, the page a search found
+        # on their own site (a contracts-preset hit is usually the news post),
+        # then their news, projects or press page. The newest wins.
+        if self.wants("CONTRACT_WIN"):
+            pages = [(site, home)]
+            hit = await self._own_hit_page(company_id, domain, site)
+            if hit:
+                pages.append((hit, await self._get(hit)))
+            found = [(c, url) for url, html in pages if html
+                     for c in [contract_win(html, domain, url)] if c]
+            if not found:
+                url, html = await self._first_present(site, CONTRACT_PATHS)
+                c = contract_win(html, domain, url) if html else None
+                found = [(c, url)] if c else []
+            if found:
+                best, where = max(found, key=lambda cu: cu[0]["date"])
+                add("CONTRACT_WIN", num=1, text=contract_text(best), conf=best["conf"], url=where)
+            else:
+                add("CONTRACT_WIN", num=0, url=site)
 
         # Incumbent agency — the compounding signal
         agency = self.detect_agency(home, domain)

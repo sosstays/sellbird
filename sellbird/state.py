@@ -24,6 +24,7 @@ from sellbird.models.campaign import Campaign, EmailStep  # noqa: F401 (EmailSte
 from sellbird.models.conversation import Conversation, Message  # noqa: F401
 
 from sellbird.paths import PROJECT_ROOT
+from sellbird.contract_wins import parse_contract
 from sellbird.startups import parse_funding
 
 DB_PATH = PROJECT_ROOT / "data" / "sellbird.db"
@@ -1814,6 +1815,12 @@ class StateManager:
         {"round", "amount", "date"} (any may be ""), or None."""
         row = await self._latest_yes(company_id, "FUNDING_ROUND")
         return parse_funding(row.get("value_text") or "") if row else None
+
+    async def contract_win(self, company_id: str) -> dict | None:
+        """The latest contract the company said on its own site it won, as
+        {"summary", "amount", "date"} (any may be ""), or None."""
+        row = await self._latest_yes(company_id, "CONTRACT_WIN")
+        return parse_contract(row.get("value_text") or "") if row else None
 
     async def get_observations(
         self,

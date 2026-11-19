@@ -26,6 +26,7 @@ from sellbird.models.campaign import Campaign, EmailStep
 from sellbird.state import WRITABLE_EMAIL_STATUSES, StateManager
 from sellbird.sending_mode import sync_sending_mode
 from sellbird.site_facts import site_facts
+from sellbird.contract_wins import contract_facts
 from sellbird.startups import startup_facts
 from sellbird.untrusted import UNTRUSTED_RULE, fence
 
@@ -50,6 +51,7 @@ _SIGNAL_SECTIONS = (
     ("#### Using a job posting", ("hiring", "job post", "open role")),
     ("### Tech-stack signal", ("tools detected", "uses ", "built on", "shopify", "hubspot", "wordpress")),
     ("### Funding signal", ("raised", "funding", "seed", "series a", "series b", "y combinator", "accelerator")),
+    ("### Contract-win signal", ("contract win",)),
     ("### New-domain", ("new domain", "registered", "just launched", "new business")),
     ("### Search-rank signal", ("searched", "search", "came up", "ranks", "google", "maps", "local pack")),
 )
@@ -368,6 +370,8 @@ class Writer:
             return True
         if await self._startup(prospect.company_id):
             return True
+        if await contract_facts(getattr(self, "state", None), prospect.company_id):
+            return True
         try:
             company = await self.state.get_company(prospect.company_id) if prospect.company_id else None
         except Exception:
@@ -556,6 +560,7 @@ class Writer:
                     f"- Signal ({signal.get('type', 'signal')}): {signal.get('detail', '')}"
                 )
         facts.extend(await self._site_facts(prospect.company_id))
+        facts.extend(await contract_facts(getattr(self, "state", None), prospect.company_id))
         if prospect.personalization_notes:
             facts.append(f"- Research notes: {prospect.personalization_notes}")
         startup = await self._startup(prospect.company_id)

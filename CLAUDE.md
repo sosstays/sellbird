@@ -212,7 +212,7 @@ tool answers, such as a link, goes into the drafted reply. Without a handoff, th
 
 ### Step 4: Confirm Signals
 
-Sellbird ships a catalog of 29 signals it knows how to collect, all **proposed** and
+Sellbird ships a catalog of 30 signals it knows how to collect, all **proposed** and
 none active. Nothing is prospected against until the user confirms them.
 
 Send them to `sellbird dashboard` → **Signals**, where each one shows a
@@ -246,6 +246,7 @@ sellbird discover --preset yc --provider serper   # startups that say they're YC
 sellbird discover --preset hiring --provider serper   # companies whose careers pages list your roles
 sellbird discover --preset accelerator --provider serper   # ...Techstars, Antler, EF and others
 sellbird discover --preset funding --provider serper       # companies announcing a raise
+sellbird discover --preset contracts --provider serper     # firms announcing a contract win
 ```
 
 The dashboard's **Discover** tab is the same thing with the tradeoffs laid out

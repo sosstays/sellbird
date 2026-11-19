@@ -103,6 +103,9 @@ JUNK_DOMAIN_PATTERNS = tuple(re.compile(p, re.I) for p in (
     r"(^|\.)(startupintros|openvc|siliconcanals|startupdaily|e27|similarweb|vcbacked|roundos)\.",
     r"(^|\.)(techfundingnews|startups\.gallery)",
     r"(^|\.)tech\.eu$",
+    # tender portals and construction trade press (the contracts preset's noise)
+    r"(^|\.)(etenders|tenders|tendersdirect|tenderscout|contractsfinder|find-tender|ted\.europa)\.",
+    r"(^|\.)(constructionnews|constructionenquirer|theconstructionindex|constructionireland|irishbuildingmagazine)\.",
     # infrastructure that is never a prospect
     r"(^|\.)(google|bing|yahoo|duckduckgo|amazon|apple|microsoft)\.",
     r"(wordpress|wix|squarespace|shopify|godaddy|weebly|webflow)\.com$",
@@ -1607,6 +1610,23 @@ PRESETS = {
                  "-site:prnewswire.com -site:businesswire.com -site:globenewswire.com"),
         "local": False,
     },
+    # Firms announcing work they won, on their own news or project pages,
+    # from the last year. Local: a contract is somewhere, so it runs in
+    # every geography. Tender portals and trade press name the job, not a
+    # website to profile, so they're excluded and filtered as junk. The
+    # hit records nothing by itself: the profile reads the page for the
+    # date (CONTRACT_WIN), as with a raise.
+    "contracts": {
+        "label": "Recent contract wins",
+        "kinds": ("serp",),
+        # Short: Google reads the first 32 words, and the place is appended.
+        "term": ('{industry} ("awarded the contract" OR "appointed main contractor" OR "won the contract" '
+                 'OR "commenced on site") after:{since} '
+                 "-site:linkedin.com -site:etenders.gov.ie -site:find-tender.service.gov.uk "
+                 "-site:contractsfinder.service.gov.uk -site:ted.europa.eu"),
+        "local": True,
+        "lookback_days": 365,
+    },
 }
 FUNDING_LOOKBACK_DAYS = 548       # ~18 months: older raises aren't news
 
@@ -1666,7 +1686,7 @@ def build_queries(config, cities: list[str] | None = None,
     spec = PRESETS.get(preset) if preset else None
     if spec:
         templates = preset_templates(spec)
-        since = (date.today() - timedelta(days=FUNDING_LOOKBACK_DAYS)).isoformat()
+        since = (date.today() - timedelta(days=spec.get("lookback_days", FUNDING_LOOKBACK_DAYS))).isoformat()
         from sellbird.collectors.ats import role_keywords
         roles = role_keywords(icp) if any("{role}" in tpl for tpl in templates) else [""]
         terms = [tpl.format(industry=t, role=r, since=since)

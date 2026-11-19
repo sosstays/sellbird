@@ -9,6 +9,19 @@ minor versions can still change behaviour.
 
 ### Added
 
+- **A `CONTRACT_WIN` signal and a *Recent contract wins* search.** For anyone
+  selling to contractors and project firms: a firm that just won work is about
+  to need crews housed, staff hired and materials bought. The signal reads the
+  company's own homepage, the page a search found, or its news, projects or
+  press page for a win it announced ("we have been awarded the contract
+  for...", "appointed main contractor on...", "works have commenced on site
+  at..."), and keeps their sentence, the value and the date. Prizes,
+  certificates and "we help clients win tenders" don't count. The Writer gets
+  the win as a fact and only calls it new when it's under a year old. `sellbird
+  discover --preset contracts` (or *Look for* on Discover) finds firms
+  announcing wins in the last year, in each of your places, with tender
+  portals and trade press filtered out. Proposed like every signal: nothing is
+  collected until you confirm it.
 - **`writer.require_tip: true` skips prospects with nothing to build a tip
   on.** A first email is meant to name one concrete thing the sender would
   change; with no finding about the company, the draft could only say it had no

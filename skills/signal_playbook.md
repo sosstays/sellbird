@@ -76,6 +76,21 @@ companies, so the bar for specificity is higher.
 - **Bad**: "Congratulations on your recent funding!" (every vendor sent
   that the same week).
 
+### Contract-win signal (CONTRACT_WIN)
+They said on their own site that they won work: a contract awarded, a
+main-contractor appointment, works starting on site. A new job brings needs
+with it (crews to house, staff to hire, plant and materials to buy), and the
+firm usually sorts them in the weeks around the start.
+
+- **Angle**: what the new job will need that you provide, tied to that job.
+  Quote their own words about it; don't add details they didn't say.
+- **Good**: "Saw you've started on site at the new school in Northtown. If any
+  of the crew are travelling in, we've homes nearby by the week."
+- **Bad**: "Congratulations on your recent contract win!" (says nothing, and
+  every supplier sends it).
+- Only call it new when the fact line says it's recent. An old or undated
+  win is background, not the reason you're writing.
+
 ### New-domain / new-business signal
 They just started up. Relevant only if you sell to early-stage/new
 businesses.
