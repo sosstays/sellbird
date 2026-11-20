@@ -9,6 +9,7 @@ list tracked with SQLite's ``PRAGMA user_version`` so existing user DBs
 upgrade cleanly in place.
 """
 
+import asyncio
 import json
 import uuid
 from collections.abc import Awaitable, Callable
@@ -587,6 +588,20 @@ _CONVERSATION_COLUMNS = frozenset({
 })
 
 
+# Every dashboard request calls init_db(); several arrive concurrently on
+# first load. Without a lock, two coroutines can both read the same old
+# PRAGMA user_version and both run the same migration, so the second
+# ALTER TABLE ADD COLUMN fails with "duplicate column name".
+_INIT_DB_LOCKS: dict[str, asyncio.Lock] = {}
+
+
+def _init_db_lock(db_path: str) -> asyncio.Lock:
+    lock = _INIT_DB_LOCKS.get(db_path)
+    if lock is None:
+        lock = _INIT_DB_LOCKS[db_path] = asyncio.Lock()
+    return lock
+
+
 class StateManager:
     def __init__(self, db_path: str | None = None):
         if not db_path:
@@ -615,7 +630,7 @@ class StateManager:
             await storage.check_schema(self.db_path)
             return
         Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
-        async with self._connect() as db:
+        async with _init_db_lock(self.db_path), self._connect() as db:
             # WAL is persistent in the DB file: readers (dashboard) never
             # block the writer (agent) and vice versa.
             await db.execute("PRAGMA journal_mode=WAL")
